@@ -58,15 +58,18 @@ jobs:
               --docker-password="$(aws ecr get-login-password)"
           fi
 
-      - name: Deploy Helm
-        uses: bitovi/github-actions-deploy-eks-helm@v1.2.8
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-          cluster-name: ${{ env.EKS_CLUSTER }}
-          config-files: .github/values/dev.yaml
-          chart-path: helm/vprofilecharts
-          namespace: default
-          values: appimage=${{ secrets.REGISTRY }}/${{ env.ECR_REPOSITORY }}, apptag=${{ github.run_number }}
-          name: vprofile-stack
+      - name: Check if Helm release exists
+        id: check_helm_release
+        run: |
+          if helm list --namespace default | grep -q vprofile-stack; then
+            echo "Release 'vprofile-stack' already exists. Skipping upgrade."
+            echo "::set-output name=exists::true"
+          else
+            echo "::set-output name=exists::false"
+          fi
+
+      - name: Deploy application using kubectl
+        run: |
+          # Replace the following with the path to your Kubernetes manifests
+          kubectl apply -f helm/vprofilecharts
+
