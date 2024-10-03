@@ -90,11 +90,20 @@ jobs:
       - name: Get Kube config file
         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER }}
 
-      - name: Print config file
-        run: cat ~/.kube/config
+      #- name: Print config file
+      #  run: cat ~/.kube/config
 
       - name: Login to ECR
-        run: kubectl create secret docker-registry regcred --docker-server=${{ secrets.REGISTRY }} --docker-username=AWS  --docker-password=$(aws ecr get-login-password) 
+        run: |
+          SECRET_NAME=regcred
+          if kubectl get secret "$SECRET_NAME" >/dev/null 2>&1; then
+            echo "Secret '$SECRET_NAME' already exists. Skipping creation."
+          else
+            kubectl create secret docker-registry "$SECRET_NAME" \
+              --docker-server="${{ secrets.REGISTRY }}" \
+              --docker-username=AWS \
+              --docker-password="$(aws ecr get-login-password)"
+          fi
 
       - name: Deploy Helm
         uses: bitovi/github-actions-deploy-eks-helm@v1.2.8
