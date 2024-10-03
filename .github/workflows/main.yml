@@ -7,13 +7,12 @@ env:
 
 jobs:
   BUILD_AND_PUBLISH:
-    #needs: Testing 
     runs-on: ubuntu-latest
     steps:
       - name: Code checkout
         uses: actions/checkout@v4
 
-      - name: upload image to ECR
+      - name: Upload image to ECR
         uses: appleboy/docker-ecr-action@master
         with:
           access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -47,8 +46,17 @@ jobs:
       - name: Print config file
         run: cat ~/.kube/config
 
-     # - name: Login to ECR
-      #  run: kubectl create secret docker-registry regcred --docker-server=${{ secrets.REGISTRY }} --docker-username=AWS --docker-password=$(aws ecr get-login-password)
+      - name: Login to ECR
+        run: |
+          SECRET_NAME=regcred
+          if kubectl get secret "$SECRET_NAME" >/dev/null 2>&1; then
+            echo "Secret '$SECRET_NAME' already exists. Skipping creation."
+          else
+            kubectl create secret docker-registry "$SECRET_NAME" \
+              --docker-server="${{ secrets.REGISTRY }}" \
+              --docker-username=AWS \
+              --docker-password="$(aws ecr get-login-password)"
+          fi
 
       - name: Deploy Helm
         uses: bitovi/github-actions-deploy-eks-helm@v1.2.8
@@ -57,7 +65,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
           cluster-name: ${{ env.EKS_CLUSTER }}
-          #config-files: .github/values/dev.yaml
+          # config-files: .github/values/dev.yaml
           chart-path: helm/vprofilecharts
           namespace: default
           values: appimage=${{ secrets.REGISTRY }}/${{ env.ECR_REPOSITORY }}, apptag=${{ github.run_number }}
