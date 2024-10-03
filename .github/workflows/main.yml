@@ -28,7 +28,7 @@ jobs:
           context: ./
 
   DeployToEKS:
-    needs: BUILD_AND_PULISH
+    needs: BUILD_AND_PUBLISH
     runs-on: ubuntu-latest
     steps:
       - name: Code checkout
